@@ -1,0 +1,72 @@
+# Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Import libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load dataset
+data = pd.read_csv('/content/drive/MyDrive/fraudTest.csv')
+print("Dataset Loaded:")
+print(data.head())
+print("\nData Summary:")
+print(data.describe())
+
+# Check class distribution
+fraud = data[data['is_fraud'] == 1]
+valid = data[data['is_fraud'] == 0]
+outlierFraction = len(fraud) / float(len(valid))
+print(f'\nOutlier Fraction: {outlierFraction:.4f}')
+print(f'Fraud Cases: {len(fraud)}')
+print(f'Valid Transactions: {len(valid)}')
+
+# Drop unnecessary columns (like IDs and timestamps)
+columns_to_drop = ['trans_date_trans_time', 'cc_num']
+data = data.drop(columns=columns_to_drop, axis=1)
+
+# One-hot encode categorical features
+data = pd.get_dummies(data, drop_first=True)
+
+# Split into features and target
+X = data.drop('is_fraud', axis=1)
+y = data['is_fraud']
+
+# Train-test split
+from sklearn.model_selection import train_test_split
+XTrain, XTest, yTrain, yTest = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Build Random Forest model with class_weight
+from sklearn.ensemble import RandomForestClassifier
+rfc = RandomForestClassifier(class_weight='balanced', random_state=42)
+rfc.fit(XTrain, yTrain)
+yPred = rfc.predict(XTest)
+
+# Evaluation metrics
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, confusion_matrix, roc_auc_score
+
+accuracy = accuracy_score(yTest, yPred)
+precision = precision_score(yTest, yPred)
+recall = recall_score(yTest, yPred)
+f1 = f1_score(yTest, yPred)
+mcc = matthews_corrcoef(yTest, yPred)
+roc_auc = roc_auc_score(yTest, yPred)
+
+print("\nModel Evaluation Metrics:")
+print(f"Accuracy: {accuracy:.4f}")
+print(f"Precision: {precision:.4f}")
+print(f"Recall: {recall:.4f}")
+print(f"F1-Score: {f1:.4f}")
+print(f"Matthews Correlation Coefficient: {mcc:.4f}")
+print(f"ROC-AUC Score: {roc_auc:.4f}")
+
+# Confusion matrix
+conf_matrix = confusion_matrix(yTest, yPred)
+plt.figure(figsize=(6,5))
+sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=['Normal', 'Fraud'], yticklabels=['Normal', 'Fraud'])
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted Class")
+plt.ylabel("True Class")
+plt.show()
